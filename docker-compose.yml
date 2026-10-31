@@ -1,0 +1,92 @@
+name: pg-pool-lab
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    command:
+      - postgres
+      - -c
+      - max_connections=25
+      - -c
+      - superuser_reserved_connections=3
+      - -c
+      - log_connections=on
+      - -c
+      - log_disconnections=on
+      - -c
+      - idle_in_transaction_session_timeout=15s
+      - -c
+      - password_encryption=md5
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: app
+      POSTGRES_HOST_AUTH_METHOD: md5
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/10-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d app"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "6432:6432"
+    volumes:
+      - ./docker/pgbouncer/pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini:ro
+      - ./docker/pgbouncer/userlist.txt:/etc/pgbouncer/userlist.txt:ro
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    profiles: ["obs"]
+    environment:
+      DATA_SOURCE_NAME: "postgresql://postgres:postgres@postgres:5432/app?sslmode=disable"
+    ports:
+      - "9187:9187"
+
+  pgbouncer-exporter:
+    image: prometheuscommunity/pgbouncer-exporter:latest
+    profiles: ["obs"]
+    depends_on:
+      - pgbouncer
+    environment:
+      PGBOUNCER_EXPORTER_CONNECTION_STRING: "postgres://demo:demo@pgbouncer:6432/pgbouncer?sslmode=disable"
+    ports:
+      - "9127:9127"
+
+  prometheus:
+    image: prom/prometheus:latest
+    profiles: ["obs"]
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=2d
+      - --web.enable-remote-write-receiver
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana:latest
+    profiles: ["obs"]
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./docker/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3001:3000"
+
+volumes:
+  pgdata:

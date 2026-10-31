@@ -1,0 +1,26 @@
+{
+  "name": "nodejs-db-connection-example",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/huekiet/nodejs-db-connection-example.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/huekiet/nodejs-db-connection-example/issues"
+  },
+  "homepage": "https://github.com/huekiet/nodejs-db-connection-example#readme",
+  "dependencies": {
+    "express": "^5.3.0",
+    "pg": "^8.23.1",
+    "prom-client": "^15.1.3"
+  }
+}
